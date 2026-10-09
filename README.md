@@ -1,24 +1,35 @@
 ## What
 
-Run [Odoo](https://www.odoo.com/) on [Cloudron](https://cloudron.io). For more information see DESCRIPTION.md
+Run [Odoo 20](https://www.odoo.com/) on [Cloudron](https://cloudron.io). Fork of
+[njsubedi/cloudron-odoo](https://github.com/njsubedi/cloudron-odoo), upgraded from Odoo 15 to Odoo 20.
 
-## Why
+- Base image `cloudron/base:5.0.0` (Ubuntu 24.04), Odoo installed from the official nightly `.deb`
+- PostgreSQL, sendmail, recvmail and LDAP addons wired in through the Odoo ORM (`configure.py`) on every start
+- Live chat / bus served on `/websocket`
+- Custom modules: drop them in `/app/data/extra-addons`, then restart the app
 
-Because Odoo works almost out of the box in any system that has Postgres and some disk space for data storage.
+## Install (Community app)
 
-## Build and Install
+In the Cloudron dashboard: **App Store → Community apps → Add**, then paste:
 
-- Install Cloudron CLI on your machine: `npm install -g cloudron-cli`.
-- Install Docker, and make sure you can push to docker hub, or install the docker registry app in your own Cloudron.
-- Log in to your Cloudron using cloudron cli: `cloudron login <my.yourdomain.tld>`.
-- Build and publish the docker image: `cloudron build`.
-- If you're using your own docker registry, name the image properly,
-  like `docker.example-cloudron.tld/john_doe/cloudron-odoo`.
-- Log in to Docker Hub and mark the image as public, if necessary.
-- Install the app `cloudron install -l <auth.yourdomain.tld>`
-- Look at the logs to see if everything is going as planned.
+```
+https://raw.githubusercontent.com/vitetj/cloudron-odoo/main/CloudronVersions.json
+```
 
-Refer to the [Cloudron Docs](https://docs.cloudron.io/packaging/cli) for more information.
+Default login is `admin` / `admin`: change it right after install.
+
+## Build a new version
+
+```bash
+./dev-scripts/fetch-debs.sh          # .debs go to vendor/ (SHA1 checked during the build)
+cloudron build --repository docker.io/vitetj/odoo
+cloudron versions add                # appends the build to CloudronVersions.json
+git commit -am "Release x.y.z" && git push
+```
+
+To move to a newer Odoo nightly, update `ODOO_RELEASE` and the SHA1 in the `Dockerfile` and the URL in
+`dev-scripts/fetch-debs.sh`, then bump `version` in `CloudronManifest.json`. On start, a new release triggers
+`odoo -u all` automatically.
 
 ## Third-party Intellectual Properties
 

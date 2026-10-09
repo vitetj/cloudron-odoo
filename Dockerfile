@@ -1,43 +1,38 @@
-FROM cloudron/base:3.2.0@sha256:ba1d566164a67c266782545ea9809dc611c4152e27686fd14060332dd88263ea
-# Reference: https://github.com/odoo/docker/blob/master/15.0/Dockerfile
+FROM cloudron/base:5.0.0@sha256:04fd70dbd8ad6149c19de39e35718e024417c3e01dc9c6637eaf4a41ec4e596c
+# Reference: https://github.com/odoo/docker/blob/master/20.0/Dockerfile
+
+SHELL ["/bin/bash", "-xo", "pipefail", "-c"]
 
 RUN mkdir -p /app/code /app/pkg /app/data
 WORKDIR /app/code
 
-RUN apt-get update && \
-    apt-get install -y \
-    python3-dev libxml2-dev libxslt1-dev libldap2-dev libsasl2-dev \
-    libtiff5-dev libjpeg8-dev libopenjp2-7-dev zlib1g-dev libfreetype6-dev \
-    liblcms2-dev libwebp-dev libharfbuzz-dev libfribidi-dev libxcb1-dev libpq-dev
+# The .debs are fetched on the host into vendor/ (see dev-scripts/fetch-debs.sh) because
+# the build network intercepts TLS; their SHA1 is still checked against upstream values.
+#   https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-3/wkhtmltox_0.12.6.1-3.jammy_amd64.deb
+#   https://nightly.odoo.com/20.0/nightly/deb/odoo_20.0.20260926_all.deb
+ARG ODOO_VERSION=20.0
+ARG ODOO_RELEASE=20260926
+COPY vendor/wkhtmltox.deb vendor/odoo.deb /tmp/
 
-RUN curl -o wkhtmltox.deb -sSL https://github.com/wkhtmltopdf/wkhtmltopdf/releases/download/0.12.5/wkhtmltox_0.12.5-1.focal_amd64.deb && \
-    echo 'ae4e85641f004a2097621787bf4381e962fb91e1 wkhtmltox.deb' | sha1sum -c - && \
-    apt-get install -y --no-install-recommends ./wkhtmltox.deb && \
-    rm -f ./wkhtmltox.deb && \
-    rm -rf /var/lib/apt/lists/* /var/cache/apt
+# wkhtmltopdf (patched Qt build used by the official Odoo image)
+RUN echo '967390a759707337b46d1c02452e2bb6b2dc6d59 /tmp/wkhtmltox.deb' | sha1sum -c - && \
+    echo '7cb4a582ebe275a4f9c22eae24ce2bcb7fa27040 /tmp/odoo.deb' | sha1sum -c - && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends /tmp/wkhtmltox.deb fonts-noto-cjk node-less python3-ldap && \
+    apt-get install -y --no-install-recommends /tmp/odoo.deb && \
+    rm -rf /var/lib/apt/lists/* /tmp/*.deb && \
+    test -d /usr/lib/python3/dist-packages/odoo/addons/base && \
+    echo "${ODOO_VERSION}.${ODOO_RELEASE}" > /app/pkg/ODOO_RELEASE
 
-RUN npm install -g rtlcss
+# Map Cloudron's 'displayname' LDAP attribute to the Odoo user name instead of 'cn'
+RUN f=/usr/lib/python3/dist-packages/odoo/addons/auth_ldap/models/res_company_ldap.py && \
+    if grep -q "ldap_entry\[1\]\['cn'\]" "$f"; then \
+        sed -i "s/ldap_entry\[1\]\['cn'\]/(ldap_entry[1].get('displayname') or ldap_entry[1]['cn'])/" "$f"; \
+    fi
 
-# Install Odoo
-ARG ODOO_VERSION=15.0
-ARG ODOO_COMMIT_HASH=f07c63d3e4135d658bb952f1b4880e97d0b66992
+RUN rm -rf /var/log/nginx && mkdir -p /run/nginx && ln -s /run/nginx /var/log/nginx
 
-RUN curl -L https://github.com/odoo/odoo/archive/${ODOO_COMMIT_HASH}.tar.gz | tar zx --strip-components 1 -C /app/code && \
-    pip3 install wheel && \
-    pip3 install -r requirements.txt
-
-# Patch Odoo to prevent connecting to the default database named 'postgres' every now and then.
-RUN  sed -i.bak "748i\    to = tools.config['db_name']" /app/code/odoo/sql_db.py
-
-# Properly map the LDAP attribute 'displayname' instead of 'cn' to the display name of the logged in user.
-RUN  sed -i.bak "194s/'cn'/'displayname'/" /app/code/addons/auth_ldap/models/res_company_ldap.py
-
-RUN rm -rf /var/log/nginx && mkdir /run/nginx && ln -s /run/nginx /var/log/nginx
-
-# Copy entrypoint script and Odoo configuration file
-ADD start.sh odoo.conf.sample nginx.conf /app/pkg/
-
-RUN mkdir -p /app/data/odoo/filestore /app/data/odoo/addons && \
-    chown -R cloudron:cloudron /app/data
+COPY start.sh configure.py odoo.conf.sample nginx.conf /app/pkg/
+RUN chmod +x /app/pkg/start.sh
 
 CMD [ "/app/pkg/start.sh" ]

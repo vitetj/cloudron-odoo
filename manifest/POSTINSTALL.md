@@ -1,6 +1,8 @@
-Log in with the default credentials and change your password immediately by clicking on the profile
-(**Administrator**) button in the top right corner of the screen.
+Log in with the default credentials and **change the password immediately** (profile menu, top right).
 
-Email : `admin`
+Login: `admin`
 
 Password: `admin`
+
+Cloudron users can also log in with their Cloudron username or email (LDAP).
+Custom modules go in `/app/data/extra-addons` (restart the app after adding one).
