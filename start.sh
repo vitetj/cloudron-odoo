@@ -33,6 +33,8 @@ set_opt gevent_port 8072
 set_opt list_db False
 set_opt dbfilter "^${CLOUDRON_POSTGRESQL_DATABASE}\$"
 set_opt db_name "$CLOUDRON_POSTGRESQL_DATABASE"
+# Cloudron only grants access to the app database, not to 'postgres'
+set_opt db_system "$CLOUDRON_POSTGRESQL_DATABASE"
 set_opt db_host "$CLOUDRON_POSTGRESQL_HOST"
 set_opt db_port "$CLOUDRON_POSTGRESQL_PORT"
 set_opt db_user "$CLOUDRON_POSTGRESQL_USERNAME"
