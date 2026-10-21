@@ -20,16 +20,22 @@ Default login is `admin` / `admin`: change it right after install.
 
 ## Build a new version
 
+Needs the `cloudron` CLI 9.x (`npm install -g cloudron`), Docker and a Docker Hub login (`docker login`).
+The image targets `linux/amd64`, so build with `buildx` on Apple Silicon.
+
 ```bash
-./dev-scripts/fetch-debs.sh          # .debs go to vendor/ (SHA1 checked during the build)
-cloudron build --repository docker.io/vitetj/odoo
-cloudron versions add                # appends the build to CloudronVersions.json
-git commit -am "Release x.y.z" && git push
+./dev-scripts/fetch-debs.sh                      # .debs go to vendor/ (SHA1 checked during the build)
+version=$(python3 -c 'import json;print(json.load(open("CloudronManifest.json"))["version"])')
+docker buildx build --platform linux/amd64 --push -t docker.io/vitetj/odoo:$version .
+cloudron versions add --image docker.io/vitetj/odoo:$version   # appends the build to CloudronVersions.json
+git commit -am "Release $version" && git push
 ```
 
-To move to a newer Odoo nightly, update `ODOO_RELEASE` and the SHA1 in the `Dockerfile` and the URL in
-`dev-scripts/fetch-debs.sh`, then bump `version` in `CloudronManifest.json`. On start, a new release triggers
-`odoo -u all` automatically.
+With the Container Registry app installed on your Cloudron, `cloudron builder build --repository vitetj/odoo`
+followed by `cloudron versions add --last-build` builds remotely instead of locally.
+
+Cloudron's "Check for updates" only sees versions listed in `CloudronVersions.json` on `main`: bumping
+`version` in `CloudronManifest.json` is not enough until `cloudron versions add` has been run and pushed.
 
 ## Third-party Intellectual Properties
 
