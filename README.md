@@ -3,7 +3,7 @@
 Run [Odoo 20](https://www.odoo.com/) on [Cloudron](https://cloudron.io). Fork of
 [njsubedi/cloudron-odoo](https://github.com/njsubedi/cloudron-odoo), upgraded from Odoo 15 to Odoo 20.
 
-- Base image `cloudron/base:5.0.0` (Ubuntu 24.04), Odoo installed from the official nightly `.deb`
+- Base image `cloudron/base:5.1.0` (Ubuntu 24.04, no PHP), Odoo installed from the official nightly `.deb`
 - PostgreSQL, sendmail, recvmail and LDAP addons wired in through the Odoo ORM (`configure.py`) on every start
 - Live chat / bus served on `/websocket`
 - Custom modules: drop them in `/app/data/extra-addons`, then restart the app
