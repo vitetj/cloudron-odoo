@@ -1,10 +1,17 @@
-FROM cloudron/base:5.0.0@sha256:04fd70dbd8ad6149c19de39e35718e024417c3e01dc9c6637eaf4a41ec4e596c
+# cloudron/base 5.1.0 (Ubuntu 24.04) no longer ships PHP. 5.0.0 bundled PHP 8.3, vulnerable to the
+# unauthenticated RCEs CVE-2026-109618 / CVE-2026-109619 (CERT-EU 2026-018); Odoo does not need PHP.
+FROM cloudron/base:5.1.0@sha256:1c0666c9abe9e2090d33686826d4e97769b799124573118d41e0d7485135748e
 # Reference: https://github.com/odoo/docker/blob/master/20.0/Dockerfile
 
 SHELL ["/bin/bash", "-xo", "pipefail", "-c"]
 
 RUN mkdir -p /app/code /app/pkg /app/data
 WORKDIR /app/code
+
+# Fail the build if a PHP interpreter ever comes back into the image (nothing here needs one)
+RUN if command -v php >/dev/null || dpkg -l 'php*' 2>/dev/null | grep -q '^ii'; then \
+        echo "PHP must not be part of this image" >&2; exit 1; \
+    fi
 
 # The .debs are fetched on the host into vendor/ (see dev-scripts/fetch-debs.sh) because
 # the build network intercepts TLS; their SHA1 is still checked against upstream values.
